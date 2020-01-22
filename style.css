@@ -45,3 +45,7 @@ main {
 .cell-movable {
     background-color: lightgreen;
 }
+
+.cell-check {
+    background-color: red;
+}

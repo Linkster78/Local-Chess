@@ -34,6 +34,7 @@ var boardPieces = new Array(8);
 var currentTurn = Sides.WHITE;
 var currentCell = [0, 0];
 var currentOptions = [];
+var checked = [false, false];
 
 $(document).ready(() => {
     //Generate board data
@@ -82,15 +83,17 @@ $(document).ready(() => {
                 $(getBoardCell(cell[0], cell[1])).removeClass("cell-movable");
             }
             
-            
-            boardPieces[x][y] = boardPieces[currentCell[0]][currentCell[1]];
-            boardPieces[currentCell[0]][currentCell[1]] = Pieces.NOTHING[0];
+            movePiece(currentCell, [x, y]);
             
             updateBoard();
             if(currentTurn == Sides.WHITE) {
                 currentTurn = Sides.BLACK;
             } else {
                 currentTurn = Sides.WHITE;
+            }
+            
+            if(isChecked(currentTurn)) {
+                getPieceLocation();
             }
         } else {
             getBoardCell(currentCell[0], currentCell[1]).removeClass("cell-selected");
@@ -487,6 +490,48 @@ function getPieceKey(id) {
         }
     }
     return null;
+}
+
+function getPieceLocation(id) {
+    for(var x = 0; x < 8; x++) {
+        for(var y = 0; y < 8; y++) {
+            if(boardPieces[x][y] == id) return [x, y];
+        }
+    }
+    return null;
+}
+
+function movePiece(from, to) {
+    var pieceFrom = boardPieces[from[0]][from[1]];
+    var pieceFromKey = getPieceKey(pieceFrom);
+    var pieceFromSide = Pieces[pieceFromKey][2];
+    var pieceFromType = Pieces[pieceFromKey][1];
+    var pieceTo = boardPieces[to[0]][to[1]];
+    var pieceToKey = getPieceKey(pieceTo);
+    var pieceToSide = Pieces[pieceToKey][2];
+    var pieceToType = Pieces[pieceToKey][1];
+    
+    boardPieces[to[0]][to[1]] = boardPieces[from[0]][from[1]];
+    boardPieces[from[0]][from[1]] = Pieces.NOTHING[0];
+}
+
+function isChecked(side) {
+    var kingCell = side == Sides.WHITE ? getPieceLocation(Pieces.KING_WHITE[0]) : getPieceLocation(Pieces.KING_BLACK[0]);
+    for(var x = 0; x < 8; x++) {
+        for(var y = 0; y < 8; y++) {
+            var pieceAt = boardPieces[x][y];
+            var pieceKeyAt = getPieceKey(pieceAt);
+            var pieceSideAt = Pieces[pieceKeyAt][2];
+            if(pieceSideAt != Sides.NONE && pieceSideAt != side) {
+                for(cell of getPieceOptions(x, y)) {
+                    if(cell[0] == kingCell[0] && cell[1] == kingCell[1]) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
 }
 
 function resetBoard() {

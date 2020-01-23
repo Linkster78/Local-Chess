@@ -37,10 +37,8 @@ var currentOptions = [];
 var checked = [false, false];
 
 $(document).ready(() => {
-    //Generate board data
     resetBoard();
     
-    //Generate board display
     var chessboard = $("#chessboard");
     var letterLine = $("<tr><th></th></tr>");
     for(var x = 0; x < 8; x++) {
@@ -67,11 +65,13 @@ $(document).ready(() => {
         chessboard.append(line);
     }
     
-    //Display board data on display
     updateBoard();
     
-    //Handle player actions
     $(".cell").click((event) => {
+        if(isCheckmate(currentTurn)) {
+            return;
+        }
+        
         var x = parseInt($(event.target).attr("data-x"));
         var y = parseInt($(event.target).attr("data-y"));
         var piece = boardPieces[x][y];
@@ -83,17 +83,41 @@ $(document).ready(() => {
                 $(getBoardCell(cell[0], cell[1])).removeClass("cell-movable");
             }
             
+            var kingCell;
+            if(currentTurn == Sides.WHITE) {
+                kingCell = getPieceLocation(Pieces.KING_WHITE[0]);
+            } else {
+                kingCell = getPieceLocation(Pieces.KING_BLACK[0]);
+            }
+            getBoardCell(kingCell[0], kingCell[1]).removeClass("cell-checked");
+            
             movePiece(currentCell, [x, y]);
             
-            updateBoard();
             if(currentTurn == Sides.WHITE) {
                 currentTurn = Sides.BLACK;
             } else {
                 currentTurn = Sides.WHITE;
             }
             
+            updateBoard();
+            
             if(isChecked(currentTurn)) {
-                getPieceLocation();
+                var kingCell;
+                if(currentTurn == Sides.WHITE) {
+                    kingCell = getPieceLocation(Pieces.KING_WHITE[0]);
+                } else {
+                    kingCell = getPieceLocation(Pieces.KING_BLACK[0]);
+                }
+                getBoardCell(kingCell[0], kingCell[1]).addClass("cell-checked");
+                checked[currentTurn - 1] = true;
+            }
+            
+            if(isCheckmate(currentTurn)) {
+                if(currentTurn == Sides.WHITE) {
+                    $("#status").text("Checkmate! Black team has won.");
+                } else {
+                    $("#status").text("Checkmate! White team has won.");
+                }
             }
         } else {
             getBoardCell(currentCell[0], currentCell[1]).removeClass("cell-selected");
@@ -105,8 +129,10 @@ $(document).ready(() => {
                 $(event.target).addClass("cell-selected");
                 currentOptions = [];
                 for(cell of getPieceOptions(x, y)) {
-                    $(getBoardCell(cell[0], cell[1])).addClass("cell-movable");
-                    currentOptions.push(cell);
+                    if(canMovePiece([x, y], cell)) {
+                        $(getBoardCell(cell[0], cell[1])).addClass("cell-movable");
+                        currentOptions.push(cell);
+                    }
                 }
             }
         }
@@ -463,6 +489,12 @@ function* getPieceOptions(x, y) {
             }
             break;
         case Types.KING:
+            var oppositeKingCell;
+            if(pieceSide == Sides.WHITE) {
+                oppositeKingCell = getPieceLocation(Pieces.KING_BLACK[0]);
+            } else {
+                oppositeKingCell = getPieceLocation(Pieces.KING_WHITE[0]);
+            }
             for(var x1 = 0; x1 < 3; x1++) {
                 for(var y1 = 0; y1 < 3; y1++) {
                     var x2 = x - 1 + x1;
@@ -481,6 +513,18 @@ function* getPieceOptions(x, y) {
         default:
             break;
     }
+}
+
+function canMovePiece(from, to) {
+    var allowed = true;
+    var piece = boardPieces[from[0]][from[1]];
+    var pieceAt = boardPieces[to[0]][to[1]];
+    boardPieces[to[0]][to[1]] = piece;
+    boardPieces[from[0]][from[1]] = Pieces.NOTHING[0];
+    if(isChecked(currentTurn)) allowed = false;
+    boardPieces[from[0]][from[1]] = piece;
+    boardPieces[to[0]][to[1]] = pieceAt;
+    return allowed;
 }
 
 function getPieceKey(id) {
@@ -513,6 +557,8 @@ function movePiece(from, to) {
     
     boardPieces[to[0]][to[1]] = boardPieces[from[0]][from[1]];
     boardPieces[from[0]][from[1]] = Pieces.NOTHING[0];
+    
+    /* TODO: Handle Rock */
 }
 
 function isChecked(side) {
@@ -532,6 +578,24 @@ function isChecked(side) {
         }
     }
     return false;
+}
+
+function isCheckmate(side) {
+    for(var x = 0; x < 8; x++) {
+        for(var y = 0; y < 8; y++) {
+            var pieceAt = boardPieces[x][y];
+            var pieceKeyAt = getPieceKey(pieceAt);
+            var pieceSideAt = Pieces[pieceKeyAt][2];
+            if(pieceSideAt == side) {
+                for(cell of getPieceOptions(x, y)) {
+                    if(canMovePiece([x, y], cell)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 function resetBoard() {
@@ -576,5 +640,11 @@ function updateBoard() {
                 cell.css("background-image", "url(" + pieceSvg + ")");
             }
         }
+    }
+    
+    if(currentTurn == Sides.WHITE) {
+        $("#status").text("White player's turn.");
+    } else {
+        $("#status").text("Black player's turn.");
     }
 }

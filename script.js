@@ -35,6 +35,7 @@ var currentTurn = Sides.WHITE;
 var currentCell = [0, 0];
 var currentOptions = [];
 var checked = [false, false];
+var locked = false;
 
 $(document).ready(() => {
     resetBoard();
@@ -68,7 +69,7 @@ $(document).ready(() => {
     updateBoard();
     
     $(".cell").click((event) => {
-        if(isCheckmate(currentTurn)) {
+        if(isCheckmate(currentTurn) || locked) {
             return;
         }
         
@@ -91,6 +92,12 @@ $(document).ready(() => {
             }
             getBoardCell(kingCell[0], kingCell[1]).removeClass("cell-checked");
             
+            if(currentTurn == Sides.BLACK) {
+                $("#status").text("White player's turn.");
+            } else {
+                $("#status").text("Black player's turn.");
+            }
+            
             movePiece(currentCell, [x, y]);
             
             if(currentTurn == Sides.WHITE) {
@@ -105,8 +112,10 @@ $(document).ready(() => {
                 var kingCell;
                 if(currentTurn == Sides.WHITE) {
                     kingCell = getPieceLocation(Pieces.KING_WHITE[0]);
+                    $("#status").text("The white king is checked.");
                 } else {
                     kingCell = getPieceLocation(Pieces.KING_BLACK[0]);
+                    $("#status").text("The black king is checked.");
                 }
                 getBoardCell(kingCell[0], kingCell[1]).addClass("cell-checked");
                 checked[currentTurn - 1] = true;
@@ -137,10 +146,12 @@ $(document).ready(() => {
             }
         }
     });
+    
+    $("#status").text("White player's turn.");
 });
 
 function getBoardCell(x, y) {
-    return $("[data-x=" + x + "][data-y=" + y + "]");
+    return $("td[data-x=" + x + "][data-y=" + y + "]");
 }
 
 function* getPieceOptions(x, y) {
@@ -558,6 +569,39 @@ function movePiece(from, to) {
     boardPieces[to[0]][to[1]] = boardPieces[from[0]][from[1]];
     boardPieces[from[0]][from[1]] = Pieces.NOTHING[0];
     
+    if(pieceFromType == Types.PAWN) {
+        if(to[1] == 0 || to[1] == 7) {
+            $("#status").text("Choose a piece to replace your pawn:");
+            locked = true;
+            var piecePicker = $("#piecePicker");
+            piecePicker.html("");
+            for(piece of Object.keys(Pieces)) {
+                if(Pieces[piece][2] == pieceFromSide) {
+                    if(Pieces[piece][1] != Types.KING && Pieces[piece][1] != Types.PAWN) {
+                        var pieceSvg = "res/" + piece.toLowerCase() + ".svg";
+                        var pieceOption = $("<img data-id='" + Pieces[piece][0] + "' data-x='" + to[0] + "' data-y='" + to[1] + "' class='piece-option' src='" + pieceSvg + "'>");
+                        piecePicker.append(pieceOption);
+                    }
+                }
+            }
+            
+            $(".piece-option").click((event) => {
+                var x = parseInt($(event.target).attr("data-x"));
+                var y = parseInt($(event.target).attr("data-y"));
+                var id = parseInt($(event.target).attr("data-id"));
+                boardPieces[x][y] = id;
+                locked = false;
+                updateBoard();
+                piecePicker.html("");
+                if(pieceFromSide == Sides.WHITE) {
+                    $("#status").text("Black player's turn.");
+                } else {
+                    $("#status").text("White player's turn.");
+                }
+            });
+        }
+    }
+    
     /* TODO: Handle Rock */
 }
 
@@ -640,11 +684,5 @@ function updateBoard() {
                 cell.css("background-image", "url(" + pieceSvg + ")");
             }
         }
-    }
-    
-    if(currentTurn == Sides.WHITE) {
-        $("#status").text("White player's turn.");
-    } else {
-        $("#status").text("Black player's turn.");
     }
 }

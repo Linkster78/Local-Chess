@@ -65,3 +65,8 @@ main {
 .cell-checked {
     background-color: red;
 }
+
+.piece-option {
+    width: 40%;
+    padding: 5%;
+}
